@@ -12,6 +12,8 @@ import {
   NStatistic,
   NGrid,
   NGridItem,
+  NTabs,
+  NTabPane,
 } from "naive-ui";
 import { useRouter } from "vue-router";
 import { useMessage, useLoadingBar, useNotification } from "naive-ui";
@@ -31,11 +33,11 @@ import DetectionControls from "@/components/single/DetectionControls.vue";
 import DetectionPreview from "@/components/single/DetectionPreview.vue";
 import ExtractionControls from "@/components/single/ExtractionControls.vue";
 import ExtractionPreview from "@/components/single/ExtractionPreview.vue";
+import TextureCreator from "@/components/TextureCreator.vue";
 
 import { matToBlob, matToCanvas } from "@/lib/imageProcessor";
 import { drawDetectedCards } from "@/lib/cardDetector";
 
-const router = useRouter();
 const message = useMessage();
 const loadingBar = useLoadingBar();
 const notification = useNotification();
@@ -43,6 +45,7 @@ const notification = useNotification();
 const isProcessing = ref(false);
 const file = ref<File | null>(null);
 const extractedBlobs = ref<Blob[]>([]);
+const allBlobs = ref<Blob[]>([]);
 const stats = ref<{
   filtered: number;
   totalContours: number;
@@ -55,6 +58,7 @@ const options = ref<ProcessingOptions>({
 });
 const detectionPreview = ref<typeof DetectionPreview | null>(null);
 const preprocessingPreview = ref<typeof PreprocessingPreview | null>(null);
+const textureCreator = ref<typeof TextureCreator | null>(null);
 const error = ref<string | null>(null);
 // Handle image upload
 async function handleImageUpload(f: File) {
@@ -126,6 +130,10 @@ async function update() {
     }
   }
 }
+
+function addToTexture() {
+  allBlobs.value.push(...extractedBlobs.value);
+}
 watch(
   options,
   async () => {
@@ -150,59 +158,78 @@ watch(
     </n-layout-header>
 
     <n-layout-content style="padding: 2rem">
-      <n-space vertical size="large">
-        <!-- Image Upload -->
-        <image-uploader @file-selected="handleImageUpload" />
-        <!-- Show errors if any -->
-        <n-alert
-          v-if="error"
-          type="error"
-          title="Image Processing Error"
-          closable
-          @close="error = null"
-        >
-          {{ error }}
-        </n-alert>
+      <n-tabs type="line" animated>
+        <n-tab-pane name="scan" tab="Scan & Extract Cards">
+          <n-space vertical size="large">
+            <!-- Image Upload -->
+            <image-uploader @file-selected="handleImageUpload" />
+            <!-- Show errors if any -->
+            <n-alert
+              v-if="error"
+              type="error"
+              title="Image Processing Error"
+              closable
+              @close="error = null"
+            >
+              {{ error }}
+            </n-alert>
 
-        <!-- Preprocessing Controls & Preview -->
-        <preprocessing-controls
-          v-model:options="options.preprocessingOptions"
-        />
-        <preprocessing-preview ref="preprocessingPreview" />
-        <!-- Statistics -->
-        <n-grid v-if="stats" :x-gap="12" :y-gap="12" :cols="4">
-          <n-grid-item>
-            <n-statistic label="Cards Detected" :value="stats.filtered || 0" />
-          </n-grid-item>
-          <n-grid-item>
-            <n-statistic
-              label="Total Contours"
-              :value="stats.totalContours || 0"
+            <!-- Preprocessing Controls & Preview -->
+            <preprocessing-controls
+              v-model:options="options.preprocessingOptions"
             />
-          </n-grid-item>
-          <n-grid-item>
-            <n-statistic
-              label="Cards Extracted"
-              :value="stats.extracted || 0"
-            />
-          </n-grid-item>
-          <n-grid-item>
-            <n-statistic label="Status">
-              <template #default>
-                <p :type="isProcessing ? 'info' : 'success'">
-                  {{ isProcessing ? "Processing..." : "Ready" }}
-                </p>
-              </template>
-            </n-statistic>
-          </n-grid-item>
-        </n-grid>
+            <preprocessing-preview ref="preprocessingPreview" />
+            <!-- Statistics -->
+            <n-grid v-if="stats" :x-gap="12" :y-gap="12" :cols="4">
+              <n-grid-item>
+                <n-statistic
+                  label="Cards Detected"
+                  :value="stats.filtered || 0"
+                />
+              </n-grid-item>
+              <n-grid-item>
+                <n-statistic
+                  label="Total Contours"
+                  :value="stats.totalContours || 0"
+                />
+              </n-grid-item>
+              <n-grid-item>
+                <n-statistic
+                  label="Cards Extracted"
+                  :value="stats.extracted || 0"
+                />
+              </n-grid-item>
+              <n-grid-item>
+                <n-statistic label="Status">
+                  <template #default>
+                    <p :type="isProcessing ? 'info' : 'success'">
+                      {{ isProcessing ? "Processing..." : "Ready" }}
+                    </p>
+                  </template>
+                </n-statistic>
+              </n-grid-item>
+            </n-grid>
 
-        <detection-controls v-model:options="options.detectionOptions" />
-        <detection-preview ref="detectionPreview" />
-        <extraction-controls v-model:options="options.extractionOptions" />
-        <extraction-preview :blobs="extractedBlobs" />
-        <!-- Detection Preview -->
-      </n-space>
+            <detection-controls v-model:options="options.detectionOptions" />
+            <detection-preview ref="detectionPreview" />
+            <extraction-controls v-model:options="options.extractionOptions" />
+            <extraction-preview :blobs="extractedBlobs" />
+          </n-space>
+          <n-button
+            v-if="extractedBlobs.length > 0"
+            type="primary"
+            size="large"
+            block
+            @click="addToTexture"
+          >
+            Add to Texture Creator
+          </n-button>
+        </n-tab-pane>
+
+        <n-tab-pane name="texture" tab="Create Texture">
+          <texture-creator ref="textureCreator" :blobs="allBlobs" />
+        </n-tab-pane>
+      </n-tabs>
     </n-layout-content>
 
     <!-- Processing Overlay -->
