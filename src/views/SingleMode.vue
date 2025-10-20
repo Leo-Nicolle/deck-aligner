@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { ref } from "vue";
 import {
   NLayout,
   NLayoutHeader,
@@ -16,164 +16,94 @@ import {
 import { useRouter } from "vue-router";
 import { useMessage, useLoadingBar, useNotification } from "naive-ui";
 
-import { useImageProcessor } from "@/composables/useImageProcessor";
-import { useCardDetector } from "@/composables/useCardDetector";
-import { useCardExtractor } from "@/composables/useCardExtractor";
-import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
+import { run } from "@/lib/index";
+import type { Options } from "@/lib/types";
+import {
+  cardExtractionOptions,
+  compositeOptions,
+  defaultCardDetectionOptions,
+  preprocessingOptions,
+} from "@/lib/defaults";
+// import { useImageProcessor } from "@/composables/useImageProcessor";
+// import { useCardDetector } from "@/composables/useCardDetector";
+// import { useCardExtractor } from "@/composables/useCardExtractor";
 
 import ImageUploader from "@/components/common/ImageUploader.vue";
 import ProcessingOverlay from "@/components/common/ProcessingOverlay.vue";
 import PreprocessingControls from "@/components/single/PreprocessingControls.vue";
-import PreprocessingPreview from "@/components/single/PreprocessingPreview.vue";
+// import PreprocessingPreview from "@/components/single/PreprocessingPreview.vue";
 import DetectionPreview from "@/components/single/DetectionPreview.vue";
 import ExtractionControls from "@/components/single/ExtractionControls.vue";
 import CardGallery from "@/components/single/CardGallery.vue";
+import type { ProcessedImage } from "@/lib/types";
+import { matToCanvas } from "@/lib/imageProcessor";
 
 const router = useRouter();
 const message = useMessage();
 const loadingBar = useLoadingBar();
 const notification = useNotification();
 
-// Initialize composables
-const imageProcessor = useImageProcessor();
-const cardDetector = useCardDetector(
-  computed(() => imageProcessor.preprocessingResult?.processed),
-  imageProcessor.currentImage
+const isProcessing = ref(false);
+const stats = ref<{
+  filtered: number;
+  totalContours: number;
+  extracted: number;
+} | null>(null);
+const options = ref<Options>({
+  preprocessing: { ...preprocessingOptions },
+  detection: { ...defaultCardDetectionOptions },
+  extraction: { ...cardExtractionOptions },
+});
+const originalCanvas = ref<HTMLCanvasElement>(document.createElement("canvas"));
+const grayscaleCanvas = ref<HTMLCanvasElement>(
+  document.createElement("canvas")
 );
-const cardExtractor = useCardExtractor();
-
-// Track overall processing state
-const isProcessing = computed(
-  () =>
-    imageProcessor.isProcessing.value ||
-    cardDetector.isDetecting.value ||
-    cardExtractor.isExtracting.value
+const blurredCanvas = ref<HTMLCanvasElement>(document.createElement("canvas"));
+const binaryCanvas = ref<HTMLCanvasElement>(document.createElement("canvas"));
+const processedCanvas = ref<HTMLCanvasElement>(
+  document.createElement("canvas")
 );
 
+const error = ref<string | null>(null);
 // Handle image upload
 async function handleImageUpload(file: File) {
   loadingBar.start();
-  await imageProcessor.loadImage(file);
-  if (imageProcessor.error.value) {
+  isProcessing.value = true;
+  const result = await run(
+    {
+      /* processing options */
+    },
+    file
+  );
+  stats.value = {
+    filtered: result.detectionResult?.filteredCount || 0,
+    totalContours: result.detectionResult?.totalContours || 0,
+    extracted: result.extractedCards.length,
+  };
+  matToCanvas(result.preprocessingResult?.original, originalCanvas.value);
+  matToCanvas(result.preprocessingResult?.grayscale, grayscaleCanvas.value);
+  matToCanvas(result.preprocessingResult?.blurred, blurredCanvas.value);
+  matToCanvas(result.preprocessingResult?.binary, binaryCanvas.value);
+  matToCanvas(result.preprocessingResult?.processed, processedCanvas.value);
+
+  if (result.error) {
     loadingBar.error();
-    message.error(`Failed to load image: ${imageProcessor.error.value}`);
+    message.error(`Failed to load image: ${result.error}`);
+    error.value = result.error;
   } else {
     loadingBar.finish();
     message.success("Image loaded and preprocessed successfully");
 
     // Show detection result notification if cards were detected
-    if (
-      cardDetector.detectionResult.value &&
-      cardDetector.detectionResult.value.filteredCount > 0
-    ) {
+    if (result.detectionResult && result.detectionResult.filteredCount > 0) {
       notification.success({
         title: "Cards Detected",
-        content: `Found ${cardDetector.detectionResult.value.filteredCount} card(s) in the image`,
+        content: `Found ${result.detectionResult.filteredCount} card(s) in the image`,
         duration: 3000,
       });
     }
   }
 }
-
-// Watch for preprocessing options changes and reprocess
-watch(
-  () => imageProcessor.preprocessingOptions.value,
-  () => {
-    if (imageProcessor.currentImage) {
-      imageProcessor.processImage();
-    }
-  },
-  { deep: true }
-);
-
-// Handle card extraction
-async function handleExtractCards(options: {
-  outputWidth: number;
-  outputHeight: number;
-}) {
-  if (!cardDetector.detectionResult.value || !imageProcessor.currentImage) {
-    message.error("No cards detected");
-    return;
-  }
-
-  loadingBar.start();
-
-  // Update extraction options
-  cardExtractor.extractionOptions.value = {
-    outputWidth: options.outputWidth,
-    outputHeight: options.outputHeight,
-  };
-
-  await cardExtractor.extractCards(
-    imageProcessor.currentImage,
-    cardDetector.detectionResult.value.cards
-  );
-
-  if (cardExtractor.error.value) {
-    loadingBar.error();
-    notification.error({
-      title: "Extraction Failed",
-      content: cardExtractor.error.value,
-      duration: 5000,
-    });
-  } else {
-    loadingBar.finish();
-    notification.success({
-      title: "Extraction Complete",
-      content: `Successfully extracted ${cardExtractor.cardCount.value} cards at ${options.outputWidth}×${options.outputHeight}px`,
-      duration: 3000,
-    });
-  }
-}
-
-// Handle card download
-function handleDownloadCard(card: any) {
-  cardExtractor.downloadCard(card);
-  message.success("Card downloaded");
-}
-
-// Handle download all cards
-async function handleDownloadAll() {
-  await cardExtractor.downloadAll();
-  if (cardExtractor.error.value) {
-    message.error(`Failed to download cards: ${cardExtractor.error.value}`);
-  } else {
-    message.success("All cards downloaded as ZIP");
-  }
-}
-
-// Keyboard shortcuts
-useKeyboardShortcuts([
-  {
-    key: "b",
-    ctrl: true,
-    description: "Switch to Batch Mode",
-    handler: () => router.push("/batch"),
-  },
-  {
-    key: "e",
-    ctrl: true,
-    description: "Extract cards (if detected)",
-    handler: () => {
-      if (
-        cardDetector.detectionResult.value &&
-        cardDetector.detectionResult.value.filteredCount > 0
-      ) {
-        handleExtractCards({ outputWidth: 750, outputHeight: 1050 });
-      }
-    },
-  },
-  {
-    key: "s",
-    ctrl: true,
-    description: "Download all cards as ZIP",
-    handler: () => {
-      if (cardExtractor.hasCards.value) {
-        handleDownloadAll();
-      }
-    },
-  },
-]);
 </script>
 
 <template>
@@ -198,28 +128,20 @@ useKeyboardShortcuts([
         <image-uploader @file-selected="handleImageUpload" />
 
         <!-- Statistics -->
-        <n-grid
-          v-if="imageProcessor.currentImage"
-          :x-gap="12"
-          :y-gap="12"
-          :cols="4"
-        >
+        <n-grid v-if="stats" :x-gap="12" :y-gap="12" :cols="4">
           <n-grid-item>
-            <n-statistic
-              label="Cards Detected"
-              :value="cardDetector.detectionResult.value?.filteredCount || 0"
-            />
+            <n-statistic label="Cards Detected" :value="stats.filtered || 0" />
           </n-grid-item>
           <n-grid-item>
             <n-statistic
               label="Total Contours"
-              :value="cardDetector.detectionResult.value?.totalContours || 0"
+              :value="stats.totalContours || 0"
             />
           </n-grid-item>
           <n-grid-item>
             <n-statistic
               label="Cards Extracted"
-              :value="cardExtractor.cardCount.value"
+              :value="stats.extracted || 0"
             />
           </n-grid-item>
           <n-grid-item>
@@ -235,88 +157,33 @@ useKeyboardShortcuts([
 
         <!-- Show errors if any -->
         <n-alert
-          v-if="imageProcessor.error.value"
+          v-if="error"
           type="error"
           title="Image Processing Error"
           closable
-          @close="imageProcessor.error.value = null"
+          @close="error = null"
         >
-          {{ imageProcessor.error.value }}
-        </n-alert>
-
-        <n-alert
-          v-if="cardDetector.error.value"
-          type="error"
-          title="Card Detection Error"
-          closable
-          @close="cardDetector.error.value = null"
-        >
-          {{ cardDetector.error.value }}
-        </n-alert>
-
-        <n-alert
-          v-if="cardExtractor.error.value"
-          type="error"
-          title="Card Extraction Error"
-          closable
-          @close="cardExtractor.error.value = null"
-        >
-          {{ cardExtractor.error.value }}
+          {{ error }}
         </n-alert>
 
         <!-- Preprocessing Controls & Preview -->
-        <preprocessing-controls
-          v-if="imageProcessor.currentImage"
-          v-model:options="imageProcessor.preprocessingOptions.value"
-        />
+        <preprocessing-controls v-model:options="options" />
 
-        <preprocessing-preview
-          v-if="imageProcessor.preprocessingResult"
-          :result="imageProcessor.preprocessingResult"
+        <detection-preview
+          :original-image="originalCanvas"
+          :grayscale-image="grayscaleCanvas"
+          :blurred-image="blurredCanvas"
+          :binary-image="binaryCanvas"
+          :processed-image="processedCanvas"
+          :options="options.preprocessing"
+          :filteredCount="stats ? stats.filtered : 0"
+          :totalContours="stats ? stats.totalContours : 0"
         />
 
         <!-- Detection Preview -->
-        <detection-preview
-          v-if="
-            cardDetector.detectionResult.value && imageProcessor.currentImage
-          "
-          :result="cardDetector.detectionResult.value"
-          :original-image="imageProcessor.currentImage"
-          :options="cardDetector.detectionOptions.value"
-          @update:options="cardDetector.detectionOptions.value = $event"
-        />
-
-        <!-- Extraction Controls -->
-        <extraction-controls
-          v-if="
-            cardDetector.detectionResult.value &&
-            cardDetector.detectionResult.value.filteredCount > 0
-          "
-          @extract="handleExtractCards"
-        />
-
-        <!-- Card Gallery -->
-        <card-gallery
-          v-if="cardExtractor.hasCards.value"
-          :cards="cardExtractor.extractedCards.value"
-          @download="handleDownloadCard"
-          @download-all="handleDownloadAll"
-        />
       </n-space>
     </n-layout-content>
 
     <!-- Processing Overlay -->
-    <processing-overlay
-      :show="isProcessing"
-      :message="
-        imageProcessor.isProcessing.value
-          ? 'Processing image...'
-          : cardDetector.isDetecting.value
-          ? 'Detecting cards...'
-          : cardExtractor.isExtracting.value
-          ? 'Extracting cards...'
-          : 'Processing...'
-      "
-    />
   </n-layout>
 </template>

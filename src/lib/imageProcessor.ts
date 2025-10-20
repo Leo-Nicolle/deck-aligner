@@ -4,21 +4,7 @@
  */
 
 import cv, { type Mat } from "opencv-ts";
-
-export interface PreprocessingResult {
-  original: any; // cv.Mat
-  grayscale: any; // cv.Mat
-  blurred: any; // cv.Mat
-  binary: any; // cv.Mat
-  processed: any; // cv.Mat (after morphological operations)
-}
-
-export interface PreprocessingOptions {
-  blurKernelSize?: number;
-  thresholdValue?: number;
-  useAdaptiveThreshold?: boolean;
-  morphologyKernelSize?: number;
-}
+import type { PreprocessingOptions, PreprocessingResult } from "./types";
 
 /**
  * Load an image from a File object and convert to cv.Mat

@@ -3,23 +3,7 @@
  * Manages unified collection of cards from multiple images
  */
 
-import type { ExtractedCard } from "./cardExtractor";
-import type { ProcessedImage } from "./batchProcessor";
-
-export interface ManagedCard extends ExtractedCard {
-  globalId: string; // "img_001_card_03"
-  sourceImageId: string;
-  sourceImageName: string;
-  isSelected: boolean;
-  isDiscarded: boolean;
-  customPosition: number; // For manual reordering
-}
-
-export interface CardCollectionState {
-  cards: ManagedCard[];
-  selectedIds: Set<string>;
-  discardedIds: Set<string>;
-}
+import type { CardCollectionState, ManagedCard, ProcessedImage } from "./types";
 
 export class CardManager {
   private cards: ManagedCard[] = [];
@@ -39,7 +23,10 @@ export class CardManager {
       image.extractedCards.forEach((card, cardIndex) => {
         const managedCard: ManagedCard = {
           ...card,
-          globalId: `${image.id}_card_${String(cardIndex + 1).padStart(2, "0")}`,
+          globalId: `${image.id}_card_${String(cardIndex + 1).padStart(
+            2,
+            "0"
+          )}`,
           sourceImageId: image.id,
           sourceImageName: image.fileName,
           isSelected: false,
@@ -68,9 +55,7 @@ export class CardManager {
    * Get selected cards
    */
   getSelectedCards(): ManagedCard[] {
-    return this.cards.filter(
-      (card) => card.isSelected && !card.isDiscarded
-    );
+    return this.cards.filter((card) => card.isSelected && !card.isDiscarded);
   }
 
   /**
@@ -183,9 +168,7 @@ export class CardManager {
   /**
    * Sort cards by criteria
    */
-  sortCards(
-    criteria: "position" | "source" | "size" | "aspectRatio"
-  ): void {
+  sortCards(criteria: "position" | "source" | "size" | "aspectRatio"): void {
     const activeCards = this.getCards(false);
 
     switch (criteria) {
@@ -199,8 +182,7 @@ export class CardManager {
         break;
       case "size":
         activeCards.sort(
-          (a, b) =>
-            a.image.cols * a.image.rows - b.image.cols * b.image.rows
+          (a, b) => a.image.cols * a.image.rows - b.image.cols * b.image.rows
         );
         break;
       case "aspectRatio":

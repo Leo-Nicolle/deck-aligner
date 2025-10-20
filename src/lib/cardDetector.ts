@@ -4,29 +4,12 @@
  */
 
 import cv from "opencv-ts";
-
-export interface DetectedCard {
-  contour: any; // cv.Mat
-  corners: Array<{ x: number; y: number }>; // 4 corners of the card
-  boundingRect: { x: number; y: number; width: number; height: number };
-  area: number;
-  aspectRatio: number;
-}
-
-export interface CardDetectionOptions {
-  minAreaRatio?: number; // Minimum card area as ratio of image (default: 0.01 = 1%)
-  maxAreaRatio?: number; // Maximum card area as ratio of image (default: 0.5 = 50%)
-  minAspectRatio?: number; // Minimum height/width ratio (default: 1.2)
-  maxAspectRatio?: number; // Maximum height/width ratio (default: 1.8)
-  minSolidity?: number; // Minimum solidity (area/convexHullArea) (default: 0.85)
-  approxEpsilon?: number; // Polygon approximation accuracy (default: 0.02)
-}
-
-export interface CardDetectionResult {
-  cards: DetectedCard[];
-  totalContours: number;
-  filteredCount: number;
-}
+import type {
+  CardDetectionOptions,
+  CardDetectionResult,
+  DetectedCard,
+} from "./types";
+import { defaultCardDetectionOptions } from "./defaults";
 
 /**
  * Detect cards in a preprocessed binary image
@@ -37,13 +20,15 @@ export function detectCards(
   options: CardDetectionOptions = {}
 ): CardDetectionResult {
   const {
-    minAreaRatio = 0.01,
-    maxAreaRatio = 0.5,
-    minAspectRatio = 1.2,
-    maxAspectRatio = 1.8,
-    minSolidity = 0.85,
-  } = options;
-
+    minAreaRatio,
+    maxAreaRatio,
+    minAspectRatio,
+    maxAspectRatio,
+    minSolidity,
+  } = {
+    ...defaultCardDetectionOptions,
+    ...options,
+  };
   // Calculate image area for filtering
   const imageArea = binaryImage.rows * binaryImage.cols;
   const minArea = imageArea * minAreaRatio;
@@ -123,7 +108,9 @@ export function detectCards(
  * Extract corner points from a rotated rectangle
  * minAreaRect returns a rectangle that fits the contour, ignoring rounded corners
  */
-function extractCornersFromRotatedRect(rotatedRect: any): Array<{ x: number; y: number }> {
+function extractCornersFromRotatedRect(
+  rotatedRect: any
+): Array<{ x: number; y: number }> {
   // RotatedRect has center, size (width, height), and angle
   const center = rotatedRect.center;
   const size = rotatedRect.size;
@@ -140,9 +127,9 @@ function extractCornersFromRotatedRect(rotatedRect: any): Array<{ x: number; y: 
   // Define corners in local coordinate system (before rotation)
   const localCorners = [
     { x: -halfWidth, y: -halfHeight }, // Top-left
-    { x: halfWidth, y: -halfHeight },  // Top-right
-    { x: halfWidth, y: halfHeight },   // Bottom-right
-    { x: -halfWidth, y: halfHeight },  // Bottom-left
+    { x: halfWidth, y: -halfHeight }, // Top-right
+    { x: halfWidth, y: halfHeight }, // Bottom-right
+    { x: -halfWidth, y: halfHeight }, // Bottom-left
   ];
 
   // Rotate each corner and translate to world coordinates
@@ -162,7 +149,9 @@ function extractCornersFromRotatedRect(rotatedRect: any): Array<{ x: number; y: 
  * Order corners in clockwise order starting from top-left
  * Returns: [top-left, top-right, bottom-right, bottom-left]
  */
-export function orderCorners(corners: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
+export function orderCorners(
+  corners: Array<{ x: number; y: number }>
+): Array<{ x: number; y: number }> {
   if (corners.length !== 4) {
     throw new Error("Expected exactly 4 corners");
   }
@@ -228,7 +217,13 @@ export function drawDetectedCards(
       // Draw line to next corner
       const nextCorner = orderedCorners[(i + 1) % 4];
       const nextPoint = new cv.Point(nextCorner.x, nextCorner.y);
-      cv.line(image, cornerPoint, nextPoint, new cv.Scalar(255, 255, 0, 255), 2);
+      cv.line(
+        image,
+        cornerPoint,
+        nextPoint,
+        new cv.Scalar(255, 255, 0, 255),
+        2
+      );
     });
 
     // Draw card number at center

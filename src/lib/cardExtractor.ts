@@ -5,18 +5,13 @@
 
 import cv from "opencv-ts";
 import JSZip from "jszip";
-import { orderCorners, type DetectedCard } from "./cardDetector";
-
-export interface ExtractedCard {
-  image: any; // cv.Mat - extracted and standardized card image
-  originalCorners: Array<{ x: number; y: number }>; // Original corner positions
-  cardNumber: number; // Sequential card number
-}
-
-export interface CardExtractionOptions {
-  outputWidth?: number; // Default: 750
-  outputHeight?: number; // Default: 1050
-}
+import { orderCorners } from "./cardDetector";
+import type {
+  CardExtractionOptions,
+  DetectedCard,
+  ExtractedCard,
+} from "./types";
+import { cardExtractionOptions } from "./defaults";
 
 /**
  * Extract a single card using perspective transform
@@ -26,7 +21,10 @@ export function extractCard(
   detectedCard: DetectedCard,
   options: CardExtractionOptions = {}
 ): any {
-  const { outputWidth = 750, outputHeight = 1050 } = options;
+  const { outputWidth = 750, outputHeight = 1050 } = {
+    ...cardExtractionOptions,
+    ...options,
+  };
 
   // Order corners: top-left, top-right, bottom-right, bottom-left
   const orderedCorners = orderCorners(detectedCard.corners);
@@ -34,19 +32,19 @@ export function extractCard(
   // Calculate the width and height of the detected card
   const topWidth = Math.sqrt(
     Math.pow(orderedCorners[1].x - orderedCorners[0].x, 2) +
-    Math.pow(orderedCorners[1].y - orderedCorners[0].y, 2)
+      Math.pow(orderedCorners[1].y - orderedCorners[0].y, 2)
   );
   const bottomWidth = Math.sqrt(
     Math.pow(orderedCorners[2].x - orderedCorners[3].x, 2) +
-    Math.pow(orderedCorners[2].y - orderedCorners[3].y, 2)
+      Math.pow(orderedCorners[2].y - orderedCorners[3].y, 2)
   );
   const leftHeight = Math.sqrt(
     Math.pow(orderedCorners[3].x - orderedCorners[0].x, 2) +
-    Math.pow(orderedCorners[3].y - orderedCorners[0].y, 2)
+      Math.pow(orderedCorners[3].y - orderedCorners[0].y, 2)
   );
   const rightHeight = Math.sqrt(
     Math.pow(orderedCorners[2].x - orderedCorners[1].x, 2) +
-    Math.pow(orderedCorners[2].y - orderedCorners[1].y, 2)
+      Math.pow(orderedCorners[2].y - orderedCorners[1].y, 2)
   );
 
   // Average width and height

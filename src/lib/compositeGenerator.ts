@@ -4,39 +4,14 @@
  */
 
 import cv from "opencv-ts";
-import type { ManagedCard } from "./cardManager";
-
-export interface CompositeOptions {
-  cardsPerRow: number;
-  spacing: number; // px between cards
-  backgroundColor: string; // hex color
-  scaleMode: "fit" | "original";
-  maxCardWidth?: number; // for fit mode
-  maxCardHeight?: number; // for fit mode
-}
-
-export interface CompositeResult {
-  composite: any; // cv.Mat
-  layout: LayoutInfo;
-}
-
-export interface LayoutInfo {
-  totalWidth: number;
-  totalHeight: number;
-  rows: number;
-  cols: number;
-  cardPositions: CardPosition[];
-}
-
-export interface CardPosition {
-  cardId: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  row: number;
-  col: number;
-}
+import type {
+  CardPosition,
+  CompositeOptions,
+  CompositeResult,
+  LayoutInfo,
+  ManagedCard,
+} from "./types";
+import { compositeOptions } from "./defaults";
 
 /**
  * Generate composite image from cards
@@ -45,6 +20,10 @@ export function generateComposite(
   cards: ManagedCard[],
   options: CompositeOptions
 ): CompositeResult {
+  options = {
+    ...compositeOptions,
+    ...options,
+  };
   if (cards.length === 0) {
     throw new Error("No cards to composite");
   }
