@@ -15,7 +15,6 @@ import {
   NTabs,
   NTabPane,
 } from "naive-ui";
-import { useRouter } from "vue-router";
 import { useMessage, useLoadingBar, useNotification } from "naive-ui";
 
 import { run } from "@/lib/index";
@@ -26,13 +25,13 @@ import {
   preprocessingOptions,
 } from "@/lib/defaults";
 
-import ImageUploader from "@/components/common/ImageUploader.vue";
-import PreprocessingControls from "@/components/single/PreprocessingControls.vue";
-import PreprocessingPreview from "@/components/single/PreprocessingPreview.vue";
-import DetectionControls from "@/components/single/DetectionControls.vue";
-import DetectionPreview from "@/components/single/DetectionPreview.vue";
-import ExtractionControls from "@/components/single/ExtractionControls.vue";
-import ExtractionPreview from "@/components/single/ExtractionPreview.vue";
+import ImageUploader from "@/components/ImageUploader.vue";
+import PreprocessingControls from "@/components/PreprocessingControls.vue";
+import PreprocessingPreview from "@/components/PreprocessingPreview.vue";
+import DetectionControls from "@/components/DetectionControls.vue";
+import DetectionPreview from "@/components/DetectionPreview.vue";
+import ExtractionControls from "@/components/ExtractionControls.vue";
+import ExtractionPreview from "@/components/ExtractionPreview.vue";
 import TextureCreator from "@/components/TextureCreator.vue";
 
 import { matToBlob, matToCanvas } from "@/lib/imageProcessor";
