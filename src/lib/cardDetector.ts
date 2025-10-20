@@ -3,13 +3,16 @@
  * Detects playing cards in preprocessed images using contour detection
  */
 
-import cv, { type Mat } from "opencv-ts";
+import cv from "opencv-ts";
 import type {
   CardDetectionOptions,
   CardDetectionResult,
   DetectedCard,
 } from "./types";
 import { defaultCardDetectionOptions } from "./defaults";
+
+// Re-export types for convenience
+export type { CardDetectionOptions, CardDetectionResult, DetectedCard };
 
 /**
  * Detect cards in a preprocessed binary image

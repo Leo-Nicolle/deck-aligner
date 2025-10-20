@@ -1,12 +1,9 @@
 // Web Worker for image processing to avoid blocking the main thread
 import cv from 'opencv-ts'
-import {
-  preprocessImage,
-  detectCards,
-  extractCards,
-  type PreprocessingOptions,
-  type CardDetectionOptions
-} from '@/lib/imageProcessor'
+import { preprocessImage, type PreprocessingOptions } from '@/lib/imageProcessor'
+import { detectCards, type CardDetectionOptions } from '@/lib/cardDetector'
+import { extractAllCards } from '@/lib/cardExtractor'
+import type { ExtractedCard } from '@/lib/types'
 
 // Worker message types
 interface ProcessImageMessage {
@@ -63,10 +60,9 @@ self.onmessage = async (event: MessageEvent<ProcessImageMessage>) => {
       } as WorkerResponse)
 
       // Extract cards
-      const cards = extractCards(mat, detected.cards, {
+      const cards = extractAllCards(mat, detected.cards, {
         outputWidth: 750,
-        outputHeight: 1050,
-        maintainAspectRatio: true
+        outputHeight: 1050
       })
       postMessage({
         type: 'progress',
@@ -87,7 +83,7 @@ self.onmessage = async (event: MessageEvent<ProcessImageMessage>) => {
         type: 'complete',
         imageIndex,
         imageName,
-        cards: cards.map(card => ({
+        cards: cards.map((card: ExtractedCard) => ({
           // Convert cv.Mat to ImageData for transfer
           width: card.image.cols,
           height: card.image.rows,

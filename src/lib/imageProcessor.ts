@@ -6,6 +6,9 @@
 import cv, { type Mat } from "opencv-ts";
 import type { PreprocessingOptions, PreprocessingResult } from "./types";
 
+// Re-export types for convenience
+export type { PreprocessingOptions, PreprocessingResult };
+
 /**
  * Load an image from a File object and convert to cv.Mat
  */

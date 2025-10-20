@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import {
   NCard,
   NSpace,
   NText,
   NSlider,
-  NStatistic,
   NGrid,
   NGridItem,
 } from "naive-ui";

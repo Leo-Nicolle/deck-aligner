@@ -175,6 +175,7 @@ watch(
 
             <!-- Preprocessing Controls & Preview -->
             <preprocessing-controls
+              v-if="options.preprocessingOptions"
               v-model:options="options.preprocessingOptions"
             />
             <preprocessing-preview ref="preprocessingPreview" />
@@ -209,9 +210,9 @@ watch(
               </n-grid-item>
             </n-grid>
 
-            <detection-controls v-model:options="options.detectionOptions" />
+            <detection-controls v-if="options.detectionOptions" v-model:options="options.detectionOptions" />
             <detection-preview ref="detectionPreview" />
-            <extraction-controls v-model:options="options.extractionOptions" />
+            <extraction-controls v-if="options.extractionOptions" v-model:options="options.extractionOptions" />
             <extraction-preview :blobs="extractedBlobs" />
           </n-space>
           <n-button

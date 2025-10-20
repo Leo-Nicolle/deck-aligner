@@ -12,9 +12,11 @@ const emit = defineEmits<{
 
 function updateOption<K extends keyof CardExtractionOptions>(
   key: K,
-  value: CardExtractionOptions[K]
+  value: CardExtractionOptions[K] | null
 ) {
-  emit("update:options", { ...props.options, [key]: value });
+  if (value !== null) {
+    emit("update:options", { ...props.options, [key]: value });
+  }
 }
 </script>
 

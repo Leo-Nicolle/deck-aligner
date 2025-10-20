@@ -13,6 +13,9 @@ import type {
 } from "./types";
 import { cardExtractionOptions } from "./defaults";
 
+// Re-export types for convenience
+export type { CardExtractionOptions, DetectedCard, ExtractedCard };
+
 /**
  * Extract a single card using perspective transform
  */
