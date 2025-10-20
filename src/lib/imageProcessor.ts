@@ -3,7 +3,7 @@
  * Handles image preprocessing pipeline for card detection
  */
 
-import cv from "opencv-ts";
+import cv, { type Mat } from "opencv-ts";
 
 export interface PreprocessingResult {
   original: any; // cv.Mat
@@ -23,7 +23,7 @@ export interface PreprocessingOptions {
 /**
  * Load an image from a File object and convert to cv.Mat
  */
-export async function loadImageFromFile(file: File): Promise<any> {
+export async function loadImageFromFile(file: File): Promise<Mat> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
