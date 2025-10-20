@@ -3,7 +3,7 @@
  * Detects playing cards in preprocessed images using contour detection
  */
 
-import cv from "opencv-ts";
+import cv, { type Mat } from "opencv-ts";
 import type {
   CardDetectionOptions,
   CardDetectionResult,
@@ -62,6 +62,7 @@ export function detectCards(
     const rect = cv.boundingRect(contour);
     const aspectRatio = rect.height / rect.width;
     if (aspectRatio < minAspectRatio || aspectRatio > maxAspectRatio) {
+      console.log("filter aspect ratio", aspectRatio);
       continue;
     }
 
@@ -73,6 +74,7 @@ export function detectCards(
     hull.delete();
 
     if (solidity < minSolidity) {
+      console.log("filter solidity", solidity);
       continue;
     }
 
@@ -195,53 +197,28 @@ export function orderCorners(
  * Draw detected cards on an image for visualization
  */
 export function drawDetectedCards(
-  image: any,
-  detectionResult: CardDetectionResult,
-  color = new cv.Scalar(0, 255, 0, 255),
-  thickness: number = 3
+  ctx: CanvasRenderingContext2D,
+  detectionResult: CardDetectionResult
 ): void {
-  detectionResult.cards.forEach((card, index) => {
-    // Draw contour
-    const contours = new cv.MatVector();
-    contours.push_back(card.contour);
-    cv.drawContours(image, contours, 0, color, thickness);
-    contours.delete();
-
-    // Draw corners
+  detectionResult.cards.forEach((card) => {
     const orderedCorners = orderCorners(card.corners);
     orderedCorners.forEach((corner, i) => {
       // Draw corner circle
-      const cornerPoint = new cv.Point(corner.x, corner.y);
-      cv.circle(image, cornerPoint, 8, new cv.Scalar(255, 0, 0, 255), -1);
+      ctx.beginPath();
+      ctx.arc(corner.x, corner.y, 8, 0, 2 * Math.PI);
+      ctx.fillStyle = "red";
+      ctx.fill();
+      ctx.closePath();
 
       // Draw line to next corner
       const nextCorner = orderedCorners[(i + 1) % 4];
-      const nextPoint = new cv.Point(nextCorner.x, nextCorner.y);
-      cv.line(
-        image,
-        cornerPoint,
-        nextPoint,
-        new cv.Scalar(255, 255, 0, 255),
-        2
-      );
+      ctx.beginPath();
+      ctx.moveTo(corner.x, corner.y);
+      ctx.lineTo(nextCorner.x, nextCorner.y);
+      ctx.strokeStyle = "green";
+      ctx.lineWidth = 6;
+      ctx.stroke();
     });
-
-    // Draw card number at center
-    const centerX = Math.floor(
-      card.corners.reduce((sum, p) => sum + p.x, 0) / 4
-    );
-    const centerY = Math.floor(
-      card.corners.reduce((sum, p) => sum + p.y, 0) / 4
-    );
-    cv.putText(
-      image,
-      `Card ${index + 1}`,
-      new cv.Point(centerX - 30, centerY),
-      cv.FONT_HERSHEY_SIMPLEX,
-      0.8,
-      new cv.Scalar(255, 255, 255, 255),
-      2
-    );
   });
 }
 

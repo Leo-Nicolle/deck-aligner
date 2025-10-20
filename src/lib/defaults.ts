@@ -15,8 +15,8 @@ export const preprocessingOptions: Required<PreprocessingOptions> = {
 export const defaultCardDetectionOptions: Required<CardDetectionOptions> = {
   minAreaRatio: 0.01,
   maxAreaRatio: 0.5,
-  minAspectRatio: 1.2,
-  maxAspectRatio: 1.8,
+  minAspectRatio: 0.6,
+  maxAspectRatio: 0.8,
   minSolidity: 0.85,
   approxEpsilon: 0.02,
 };

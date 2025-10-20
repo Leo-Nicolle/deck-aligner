@@ -1,36 +1,28 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import type { RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory } from "vue-router";
+import type { RouteRecordRaw } from "vue-router";
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/',
-    name: 'single',
-    component: () => import('@/views/SingleMode.vue'),
+    path: "/",
+    name: "single",
+    component: () => import("@/views/Main.vue"),
     meta: {
-      title: 'Single Image Mode'
-    }
+      title: "Card extractor",
+    },
   },
-  {
-    path: '/batch',
-    name: 'batch',
-    component: () => import('@/views/BatchMode.vue'),
-    meta: {
-      title: 'Batch Mode'
-    }
-  }
-]
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes,
+});
 
 router.beforeEach((to, _from, next) => {
   // Update document title
   if (to.meta.title) {
-    document.title = `${to.meta.title} - Card Extractor`
+    document.title = `${to.meta.title} - Card Extractor`;
   }
-  next()
-})
+  next();
+});
 
-export default router
+export default router;

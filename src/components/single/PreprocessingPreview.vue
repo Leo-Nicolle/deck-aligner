@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref } from "vue";
 import { NCard, NGrid, NGridItem, NText } from "naive-ui";
-import type { PreprocessingResult } from "@/lib/types";
-
-const props = defineProps<{
-  result: PreprocessingResult;
-}>();
 
 const originalCanvas = ref<HTMLCanvasElement>();
 const grayscaleCanvas = ref<HTMLCanvasElement>();
@@ -13,19 +8,13 @@ const blurredCanvas = ref<HTMLCanvasElement>();
 const binaryCanvas = ref<HTMLCanvasElement>();
 const processedCanvas = ref<HTMLCanvasElement>();
 
-function updateCanvases() {}
-
-onMounted(() => {
-  updateCanvases();
+defineExpose({
+  originalCanvas,
+  grayscaleCanvas,
+  blurredCanvas,
+  binaryCanvas,
+  processedCanvas,
 });
-
-watch(
-  () => props.result,
-  () => {
-    updateCanvases();
-  },
-  { deep: true }
-);
 </script>
 
 <template>

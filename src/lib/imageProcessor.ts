@@ -95,6 +95,40 @@ export async function loadImageFromURL(url: string): Promise<any> {
 export function matToCanvas(mat: any, canvas: HTMLCanvasElement): void {
   cv.imshow(canvas, mat);
 }
+/**
+ * Convert cv.Mat to Blob (useful for downloads/uploads)
+ */
+export async function matToBlob(
+  mat: Mat,
+  mimeType: string = "image/png"
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Create a temporary canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = mat.cols;
+      canvas.height = mat.rows;
+
+      // Draw the Mat to the canvas
+      cv.imshow(canvas, mat);
+
+      // Convert canvas to blob
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Failed to convert canvas to blob"));
+          }
+        },
+        mimeType,
+        0.95 // quality for JPEG
+      );
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
 
 /**
  * Preprocess image for card detection

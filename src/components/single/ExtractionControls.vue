@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { NCard, NButton, NSpace, NInputNumber, NText } from 'naive-ui'
-import { ref } from 'vue'
+import { NCard, NButton, NSpace, NInputNumber, NText } from "naive-ui";
+import type { CardExtractionOptions } from "@/lib/types";
 
+const props = defineProps<{
+  options: CardExtractionOptions;
+}>();
 const emit = defineEmits<{
-  extract: [{ outputWidth: number; outputHeight: number }]
-}>()
+  "update:options": [CardExtractionOptions];
+  extract: [];
+}>();
 
-const outputWidth = ref(750)
-const outputHeight = ref(1050)
-
-function handleExtract() {
-  emit('extract', {
-    outputWidth: outputWidth.value,
-    outputHeight: outputHeight.value
-  })
+function updateOption<K extends keyof CardExtractionOptions>(
+  key: K,
+  value: CardExtractionOptions[K]
+) {
+  emit("update:options", { ...props.options, [key]: value });
 }
 </script>
 
@@ -23,7 +24,8 @@ function handleExtract() {
       <n-space align="center">
         <n-text>Output Width:</n-text>
         <n-input-number
-          v-model:value="outputWidth"
+          :value="props.options.outputWidth || 400"
+          @update:value="(v) => updateOption('outputWidth', v)"
           :min="100"
           :max="2000"
           :step="50"
@@ -35,7 +37,8 @@ function handleExtract() {
       <n-space align="center">
         <n-text>Output Height:</n-text>
         <n-input-number
-          v-model:value="outputHeight"
+          :value="props.options.outputHeight || 150"
+          @update:value="(v) => updateOption('outputHeight', v)"
           :min="100"
           :max="2000"
           :step="50"
@@ -44,12 +47,7 @@ function handleExtract() {
         <n-text>px</n-text>
       </n-space>
 
-      <n-button
-        type="primary"
-        size="large"
-        block
-        @click="handleExtract"
-      >
+      <n-button type="primary" size="large" block @click="emit('extract')">
         Extract Cards
       </n-button>
     </n-space>

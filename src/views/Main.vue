@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, toRaw, watch } from "vue";
 import {
   NLayout,
   NLayoutHeader,
@@ -17,26 +17,23 @@ import { useRouter } from "vue-router";
 import { useMessage, useLoadingBar, useNotification } from "naive-ui";
 
 import { run } from "@/lib/index";
-import type { Options } from "@/lib/types";
+import type { ProcessingOptions } from "@/lib/types";
 import {
   cardExtractionOptions,
-  compositeOptions,
   defaultCardDetectionOptions,
   preprocessingOptions,
 } from "@/lib/defaults";
-// import { useImageProcessor } from "@/composables/useImageProcessor";
-// import { useCardDetector } from "@/composables/useCardDetector";
-// import { useCardExtractor } from "@/composables/useCardExtractor";
 
 import ImageUploader from "@/components/common/ImageUploader.vue";
-import ProcessingOverlay from "@/components/common/ProcessingOverlay.vue";
 import PreprocessingControls from "@/components/single/PreprocessingControls.vue";
-// import PreprocessingPreview from "@/components/single/PreprocessingPreview.vue";
+import PreprocessingPreview from "@/components/single/PreprocessingPreview.vue";
+import DetectionControls from "@/components/single/DetectionControls.vue";
 import DetectionPreview from "@/components/single/DetectionPreview.vue";
 import ExtractionControls from "@/components/single/ExtractionControls.vue";
-import CardGallery from "@/components/single/CardGallery.vue";
-import type { ProcessedImage } from "@/lib/types";
-import { matToCanvas } from "@/lib/imageProcessor";
+import ExtractionPreview from "@/components/single/ExtractionPreview.vue";
+
+import { matToBlob, matToCanvas } from "@/lib/imageProcessor";
+import { drawDetectedCards } from "@/lib/cardDetector";
 
 const router = useRouter();
 const message = useMessage();
@@ -44,48 +41,73 @@ const loadingBar = useLoadingBar();
 const notification = useNotification();
 
 const isProcessing = ref(false);
+const file = ref<File | null>(null);
+const extractedBlobs = ref<Blob[]>([]);
 const stats = ref<{
   filtered: number;
   totalContours: number;
   extracted: number;
 } | null>(null);
-const options = ref<Options>({
-  preprocessing: { ...preprocessingOptions },
-  detection: { ...defaultCardDetectionOptions },
-  extraction: { ...cardExtractionOptions },
+const options = ref<ProcessingOptions>({
+  preprocessingOptions: { ...preprocessingOptions },
+  detectionOptions: { ...defaultCardDetectionOptions },
+  extractionOptions: { ...cardExtractionOptions },
 });
-const originalCanvas = ref<HTMLCanvasElement>(document.createElement("canvas"));
-const grayscaleCanvas = ref<HTMLCanvasElement>(
-  document.createElement("canvas")
-);
-const blurredCanvas = ref<HTMLCanvasElement>(document.createElement("canvas"));
-const binaryCanvas = ref<HTMLCanvasElement>(document.createElement("canvas"));
-const processedCanvas = ref<HTMLCanvasElement>(
-  document.createElement("canvas")
-);
-
+const detectionPreview = ref<typeof DetectionPreview | null>(null);
+const preprocessingPreview = ref<typeof PreprocessingPreview | null>(null);
 const error = ref<string | null>(null);
 // Handle image upload
-async function handleImageUpload(file: File) {
+async function handleImageUpload(f: File) {
+  file.value = f;
+  await update();
+}
+async function update() {
+  if (!file.value) return;
   loadingBar.start();
   isProcessing.value = true;
-  const result = await run(
-    {
-      /* processing options */
-    },
-    file
-  );
+  const result = await run(toRaw(options.value), file.value);
   stats.value = {
     filtered: result.detectionResult?.filteredCount || 0,
     totalContours: result.detectionResult?.totalContours || 0,
     extracted: result.extractedCards.length,
   };
-  matToCanvas(result.preprocessingResult?.original, originalCanvas.value);
-  matToCanvas(result.preprocessingResult?.grayscale, grayscaleCanvas.value);
-  matToCanvas(result.preprocessingResult?.blurred, blurredCanvas.value);
-  matToCanvas(result.preprocessingResult?.binary, binaryCanvas.value);
-  matToCanvas(result.preprocessingResult?.processed, processedCanvas.value);
-
+  if (preprocessingPreview.value) {
+    if (result.preprocessingResult?.original)
+      matToCanvas(
+        result.preprocessingResult?.original,
+        preprocessingPreview.value.originalCanvas
+      );
+    if (result.preprocessingResult?.grayscale)
+      matToCanvas(
+        result.preprocessingResult?.grayscale,
+        preprocessingPreview.value.grayscaleCanvas
+      );
+    if (result.preprocessingResult?.blurred)
+      matToCanvas(
+        result.preprocessingResult?.blurred,
+        preprocessingPreview.value.blurredCanvas
+      );
+    if (result.preprocessingResult?.binary)
+      matToCanvas(
+        result.preprocessingResult?.binary,
+        preprocessingPreview.value.binaryCanvas
+      );
+    if (result.preprocessingResult?.processed)
+      matToCanvas(
+        result.preprocessingResult?.processed,
+        preprocessingPreview.value.processedCanvas
+      );
+  }
+  if (detectionPreview.value && result.originalMat) {
+    matToCanvas(result.originalMat, detectionPreview.value.detectionCanvas);
+    drawDetectedCards(
+      detectionPreview.value.detectionCanvas.getContext("2d")!,
+      result.detectionResult!
+    );
+  }
+  Promise.all(result.extractedCards.map((card) => matToBlob(card.image))).then(
+    (blobs) => (extractedBlobs.value = blobs)
+  );
   if (result.error) {
     loadingBar.error();
     message.error(`Failed to load image: ${result.error}`);
@@ -104,6 +126,14 @@ async function handleImageUpload(file: File) {
     }
   }
 }
+watch(
+  options,
+  async () => {
+    if (!file.value) return;
+    await update();
+  },
+  { deep: true }
+);
 </script>
 
 <template>
@@ -111,14 +141,11 @@ async function handleImageUpload(file: File) {
     <n-layout-header bordered style="padding: 1rem">
       <n-space justify="space-between" align="center">
         <div>
-          <n-h1 style="margin: 0">Card Extractor - Single Image Mode</n-h1>
+          <n-h1 style="margin: 0">Card Extractor</n-h1>
           <n-p style="margin: 0.5rem 0 0 0" depth="3">
             Upload a scanned image and extract individual cards
           </n-p>
         </div>
-        <n-button type="primary" @click="router.push('/batch')">
-          Batch Mode
-        </n-button>
       </n-space>
     </n-layout-header>
 
@@ -126,7 +153,22 @@ async function handleImageUpload(file: File) {
       <n-space vertical size="large">
         <!-- Image Upload -->
         <image-uploader @file-selected="handleImageUpload" />
+        <!-- Show errors if any -->
+        <n-alert
+          v-if="error"
+          type="error"
+          title="Image Processing Error"
+          closable
+          @close="error = null"
+        >
+          {{ error }}
+        </n-alert>
 
+        <!-- Preprocessing Controls & Preview -->
+        <preprocessing-controls
+          v-model:options="options.preprocessingOptions"
+        />
+        <preprocessing-preview ref="preprocessingPreview" />
         <!-- Statistics -->
         <n-grid v-if="stats" :x-gap="12" :y-gap="12" :cols="4">
           <n-grid-item>
@@ -155,31 +197,10 @@ async function handleImageUpload(file: File) {
           </n-grid-item>
         </n-grid>
 
-        <!-- Show errors if any -->
-        <n-alert
-          v-if="error"
-          type="error"
-          title="Image Processing Error"
-          closable
-          @close="error = null"
-        >
-          {{ error }}
-        </n-alert>
-
-        <!-- Preprocessing Controls & Preview -->
-        <preprocessing-controls v-model:options="options" />
-
-        <detection-preview
-          :original-image="originalCanvas"
-          :grayscale-image="grayscaleCanvas"
-          :blurred-image="blurredCanvas"
-          :binary-image="binaryCanvas"
-          :processed-image="processedCanvas"
-          :options="options.preprocessing"
-          :filteredCount="stats ? stats.filtered : 0"
-          :totalContours="stats ? stats.totalContours : 0"
-        />
-
+        <detection-controls v-model:options="options.detectionOptions" />
+        <detection-preview ref="detectionPreview" />
+        <extraction-controls v-model:options="options.extractionOptions" />
+        <extraction-preview :blobs="extractedBlobs" />
         <!-- Detection Preview -->
       </n-space>
     </n-layout-content>
