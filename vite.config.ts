@@ -4,6 +4,8 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Base URL for GitHub Pages deployment
+  base: '/deck-aligner/',
   plugins: [vue()],
   resolve: {
     alias: {

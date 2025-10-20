@@ -2,6 +2,8 @@
 
 A web-based tool for automatically detecting, extracting, and organizing playing cards from scanned images. Built with Vue.js and OpenCV.js, Deck Aligner uses computer vision to identify individual cards in photographs and extract them as separate, perspective-corrected images.
 
+**🌐 Live Demo**: [https://leo-nicolle.github.io/deck-aligner/](https://leo-nicolle.github.io/deck-aligner/)
+
 ## Features
 
 ### Card Detection & Extraction
@@ -49,8 +51,21 @@ A web-based tool for automatically detecting, extracting, and organizing playing
 
 ### Prerequisites
 
-- Node.js (v16 or higher recommended)
-- npm or yarn
+- **Node.js v20.19+ or v22.12+** (required for Vite 7)
+- **npm v10.0.0+** or yarn
+
+> **Note:** This project uses Vite 7, which requires Node.js 20.19+ or 22.12+. If you're using an older version, please upgrade.
+
+You can check your Node.js version with:
+```bash
+node --version
+```
+
+We recommend using [nvm](https://github.com/nvm-sh/nvm) to manage Node.js versions:
+```bash
+nvm install 20
+nvm use 20
+```
 
 ### Installation
 
