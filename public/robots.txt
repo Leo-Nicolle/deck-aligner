@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow crawling of specific paths if needed
+# Disallow: /api/
+
+# Sitemap (update with your actual domain)
+# Sitemap: https://yourdomain.com/sitemap.xml
